@@ -108,24 +108,43 @@ public:
     int32_t readRightEncoderSpeed();
 };
 
-class IRSensors{
+class IRSensors {
 private:
-    ADC_HandleTypeDef *m_hadc; //setup adc as continuos conversion 
+    ADC_HandleTypeDef *m_hadc;
     uint32_t IRVal;
-    uint32_t WallVal; 
+    uint32_t WallVal;
+    uint32_t m_channel;
+
 public:
-    IRSensors(ADC_HandleTypeDef *hadc) : m_hadc(hadc) {}
-    void Innit(){HAL_ADC_Start(m_hadc);};
-    uint32_t IRCalip(){
-        WallVal = HAL_ADC_GetValue(m_hadc);
+    IRSensors(ADC_HandleTypeDef* hadc, uint32_t channel)
+        : m_hadc(hadc), m_channel(channel) {}
+
+    uint32_t IRCalip() {
+        WallVal = readADC();
         return WallVal;
-    };
-    bool readIR(){
-        IRVal = HAL_ADC_GetValue(m_hadc);
-        if(IRVal > WallVal ) return 1;
-        else return 0;
-    };
+    }
+
+    bool readIR() {
+        IRVal = readADC();
+        return IRVal > WallVal;
+    }
+
+private:
+    uint32_t readADC() {
+        ADC_ChannelConfTypeDef sConfig = {0};
+        sConfig.Channel = m_channel;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+
+        // Configure the desired channel before every read
+        HAL_ADC_ConfigChannel(m_hadc, &sConfig);
+
+        HAL_ADC_Start(m_hadc);
+        HAL_ADC_PollForConversion(m_hadc, HAL_MAX_DELAY);
+        return HAL_ADC_GetValue(m_hadc);
+    }
 };
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin); //communication with the ESP 32 Dev Module via Uart 
 
