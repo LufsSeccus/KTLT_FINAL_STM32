@@ -65,10 +65,10 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-IRSensors IR1(&hadc1);
-IRSensors IR2(&hadc1);
-IRSensors IR3(&hadc1);
-IRSensors IR4(&hadc1);
+IRSensors IR1(&hadc1,ADC_CHANNEL_1);
+IRSensors IR2(&hadc1,ADC_CHANNEL_2 );
+IRSensors IR3(&hadc1,ADC_CHANNEL_3);
+IRSensors IR4(&hadc1,ADC_CHANNEL_4);
 
 uint32_t dutyCycle = 0;
 
@@ -103,7 +103,7 @@ static void MX_USART1_UART_Init(void);
 float roll;
 float pitch;
 float yaw;
-int testin =0;
+
 /* USER CODE END 0 */
 
 /**
@@ -144,15 +144,10 @@ int main(void)
   MX_TIM4_Init();
   MX_USART1_UART_Init();
 
-  //Innit the IRs
-  IR1.Innit();
-  IR2.Innit();
-  IR3.Innit();
-  IR4.Innit();
 
   // Init motors
-      MOTOR leftMotor(GPIO_PIN_0, GPIO_PIN_1, &htim1, &htim3, CH1, CH1);
-      MOTOR rightMotor(GPIO_PIN_2, GPIO_PIN_3, &htim2, &htim4, CH2, CH2);
+      MOTOR leftMotor( &htim3, &htim3, CH1, CH2);
+      MOTOR rightMotor( &htim3, &htim3, CH3, CH4);
       leftMotor.Innit();
       rightMotor.Innit();
 
@@ -164,7 +159,12 @@ int main(void)
           Movements movement(&leftMotor, &rightMotor);
 
           // Encoder
-          Encoder encoder(&htim3, &htim4, CH1, CH2);
+          Encoder encoder(
+              &htim2, TIM_CHANNEL_1, // Left A
+              &htim2, TIM_CHANNEL_2, // Left B
+              &htim4, TIM_CHANNEL_1, // Right A
+              &htim4, TIM_CHANNEL_2  // Right B
+          );
           encoder.Innit();
           encoder.setPulse(500); // Set pulse-per-rev
 
@@ -198,7 +198,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		testin++;
+
 		if (MPU9250_dmpUpdateFifo() == INV_SUCCESS)
 			          {
 			              MPU9250_computeEulerAngles(true); // Calculate angles in degrees
@@ -209,8 +209,8 @@ int main(void)
 			          }
 		HAL_Delay(100); // 10 Hz
 		uint8_t ir_val = All_IR_Val(&IR1, &IR2, &IR3, &IR4);
-		        int32_t leftSpeed = encoder.readLeftEncoderSpeed();
-		        int32_t rightSpeed = encoder.readRightEncoderSpeed();
+		int32_t leftSpeed = encoder.readLeftEncoderSpeed();
+		int32_t rightSpeed = encoder.readRightEncoderSpeed();
 
 		        switch (state)
 		        {
@@ -252,6 +252,7 @@ int main(void)
 		        }
 
 		        HAL_Delay(10);
+		        send_data_uart(leftSpeed, rightSpeed, ir_val,yaw);
 	}
 }
   /* USER CODE END 3 */
