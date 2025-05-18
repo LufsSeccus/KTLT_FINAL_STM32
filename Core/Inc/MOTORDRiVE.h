@@ -5,28 +5,26 @@
 
 #include "main.h"
 #include "MPU9250-DMP.h"
+#include<cstring>
 
 #define CH1 TIM_CHANNEL_1
 #define CH2 TIM_CHANNEL_2
 #define CH3 TIM_CHANNEL_3
 #define CH4 TIM_CHANNEL_4
-   
-extern uint32_t dutyCycle; //PWm duty cycle
 
 float getYawAngle(); // set MPU_9250 as per instructions and get the results through this function
 
 class MOTOR {
 private: 
-	uint16_t IN_1;
-	uint16_t IN_2;
+
 	int32_t m_speed; // m_speed is a value ranging from -1000 to 1000
 	TIM_HandleTypeDef* M_TIM1; // 
 	TIM_HandleTypeDef* M_TIM2;
 	uint32_t m_channel1;
 	uint32_t m_channel2;
 public:
-	MOTOR(uint16_t PIN_1, uint16_t PIN_2, TIM_HandleTypeDef* F_TIM1, TIM_HandleTypeDef* F_TIM2, uint32_t CHANNEL1, uint32_t CHANNEL2)
-	    : IN_1(PIN_1), IN_2(PIN_2), M_TIM1(F_TIM1), M_TIM2(F_TIM2), m_channel1(CHANNEL1), m_channel2(CHANNEL2) {}
+	MOTOR( TIM_HandleTypeDef* F_TIM1, TIM_HandleTypeDef* F_TIM2, uint32_t CHANNEL1, uint32_t CHANNEL2)
+	    :  M_TIM1(F_TIM1), M_TIM2(F_TIM2), m_channel1(CHANNEL1), m_channel2(CHANNEL2) {}
 
 	void setSpeed(int32_t speed) { m_speed = speed; };
 	void setMotor();
@@ -65,8 +63,7 @@ public:
     Movements(MOTOR* left, MOTOR* right)
         : leftMotor(left), rightMotor(right) {}
 
-    void goStraight(PIDController* leftPID, PIDController* rightPID,
-                    float setpoint, float leftMeas, float rightMeas); // both motors forward
+    void goStraight(PIDController* leftPID, PIDController* rightPID,float setpoint, float leftMeas, float rightMeas); // both motors forward
     void rotateLeft(PIDController* leftPID, PIDController* rightPID, float setpoint, float leftMeas, float rightMeas);
     bool rotateLeft90Deg(PIDController* leftPID, PIDController* rightPID, float setpoint, float leftMeas, float rightMeas);
     void rotateRight(PIDController* leftPID, PIDController* rightPID, float setpoint, float leftMeas, float rightMeas);
@@ -84,21 +81,32 @@ class Encoder{
 private:
     int32_t LeftPosi, RightPosi;
     int32_t currLeftPosi, currRightPosi, prevLeftPosi, prevRightPosi ; 
-    TIM_HandleTypeDef* M_TIM1;
-	TIM_HandleTypeDef* M_TIM2;
-	uint32_t m_channel1;
-	uint32_t m_channel2;
+    TIM_HandleTypeDef* M_TIM1;  // Left A = TIM2_CH1
+    TIM_HandleTypeDef* M_TIM2;  // Left B = TIM2_CH2
+    TIM_HandleTypeDef* M_TIM3;  // Right A = TIM4_CH1
+    TIM_HandleTypeDef* M_TIM4;  // Right B = TIM4_CH2
+    uint32_t m_channel1;        // Left A
+    uint32_t m_channel2;        // Left B
+    uint32_t m_channel3;        // Right A
+    uint32_t m_channel4;        // Right B
     uint32_t prevLeftTime = 0;
     uint32_t prevRightTime = 0;
     uint32_t pulse;
 public:
-    Encoder(TIM_HandleTypeDef* F_TIM1, TIM_HandleTypeDef* F_TIM2, uint32_t CHANNEL1, uint32_t CHANNEL2)
-        : currLeftPosi(0), currRightPosi(0), prevLeftPosi(0), prevRightPosi(0),
+    Encoder(TIM_HandleTypeDef* FTIM1, uint32_t F_CH1,
+            TIM_HandleTypeDef* FTIM2, uint32_t F_CH2,
+            TIM_HandleTypeDef* FTIM3, uint32_t F_CH3,
+            TIM_HandleTypeDef* FTIM4, uint32_t F_CH4)
+        : M_TIM1(FTIM1), m_channel1(F_CH1),
+          M_TIM2(FTIM2), m_channel2(F_CH2),
+          M_TIM3(FTIM3), m_channel3(F_CH3),
+          M_TIM4(FTIM4), m_channel4(F_CH4),
           LeftPosi(0), RightPosi(0),
-          M_TIM1(F_TIM1), M_TIM2(F_TIM2),
-          m_channel1(CHANNEL1), m_channel2(CHANNEL2),
-          prevLeftTime(0), prevRightTime(0), pulse(1) // default pulse = 1 to avoid divide-by-zero
-    {}
+          currLeftPosi(0), currRightPosi(0),
+          prevLeftPosi(0), prevRightPosi(0),
+          prevLeftTime(0), prevRightTime(0),
+          pulse(1){}
+
 
     void Innit();
     void setPulse(uint32_t E_Pulse) { pulse = E_Pulse; }
@@ -159,4 +167,5 @@ void MCM_Wall_Following_In_A_StraightLine(
     float leftMeas,
     float rightMeas);
 
+void send_data_uart(int32_t leftSpeed, int32_t rightSpeed, uint8_t ir_val, float yaw);
 #endif
